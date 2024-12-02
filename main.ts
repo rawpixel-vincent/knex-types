@@ -91,41 +91,7 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
   }
 
   try {
-    // Fetch the list of custom enum types
-    const enums = await db
-      .table("pg_type")
-      .join("pg_enum", "pg_enum.enumtypid", "pg_type.oid")
-      .orderBy("pg_type.typname")
-      .orderBy("pg_enum.enumsortorder")
-      .select<Enum[]>("pg_type.typname as key", "pg_enum.enumlabel as value");
-
-    // Construct TypeScript enum types
-    enums.forEach((x, i) => {
-      // The first line of enum declaration
-      if (!(enums[i - 1] && enums[i - 1].key === x.key)) {
-        const enumName = overrides[x.key] ?? upperFirst(camelCase(x.key));
-        output.write(`export enum ${enumName} {\n`);
-      }
-
-      // Enum body
-      const key =
-        overrides[`${x.key}.${x.value}`] ??
-        upperFirst(camelCase(x.value.replace(/[.-]/g, "_")));
-      output.write(`  ${key} = "${x.value}",\n`);
-
-      // The closing line
-      if (!(enums[i + 1] && enums[i + 1].key === x.key)) {
-        output.write("}\n\n");
-      }
-    });
-
-    const enumsMap = new Map(
-      enums.map((x) => [
-        x.key,
-        overrides[x.key] ?? upperFirst(camelCase(x.key)),
-      ])
-    );
-
+    const enumsMap = new Map<string, string>();
     // Fetch the list of tables/columns
     const columns = await db
       .withSchema("information_schema")
